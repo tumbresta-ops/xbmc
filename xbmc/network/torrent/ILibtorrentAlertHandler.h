@@ -23,21 +23,21 @@ public:
   virtual ~ILibtorrentAlertHandler() = default;
 
   // Torrent API
-  virtual void OnTorrentError(const lt::sha256_hash& infoHash) = 0;
+  virtual void OnTorrentError(const lt::info_hash_t& infoHash) = 0;
 
   // Metadata API
-  virtual void OnMetadataReceived(const lt::sha256_hash& infoHash) = 0;
-  virtual void OnMetadataFailed(const lt::sha256_hash& infoHash) = 0;
+  virtual void OnMetadataReceived(const lt::info_hash_t& infoHash) = 0;
+  virtual void OnMetadataFailed(const lt::info_hash_t& infoHash) = 0;
 
   // Piece API
-  virtual void OnPieceFinished(const lt::sha256_hash& infoHash, int pieceIndex) = 0;
+  virtual void OnPieceFinished(const lt::info_hash_t& infoHash, int pieceIndex) = 0;
 
   // Read piece API
-  virtual void OnReadPieceFinished(const lt::sha256_hash& infoHash,
+  virtual void OnReadPieceFinished(const lt::info_hash_t& infoHash,
                                    int pieceIndex,
                                    const uint8_t* pieceBuffer,
                                    size_t readSize) = 0;
-  virtual void OnReadPieceFailed(const lt::sha256_hash& infoHash, int pieceIndex) = 0;
+  virtual void OnReadPieceFailed(const lt::info_hash_t& infoHash, int pieceIndex) = 0;
 };
 } // namespace NETWORK
 } // namespace KODI

@@ -22,7 +22,7 @@ namespace NETWORK
 class CTorrentPiece
 {
 public:
-  CTorrentPiece(const lt::sha256_hash& infoHash);
+  CTorrentPiece(const lt::info_hash_t& infoHash);
   ~CTorrentPiece() = default;
 
   // Torrent API
@@ -44,7 +44,7 @@ public:
 
 private:
   // Construction parameters
-  const lt::sha256_hash m_infoHash;
+  const lt::info_hash_t m_infoHash;
 
   // Piece parameters
   bool m_pieceFinished{false};

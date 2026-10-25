@@ -11,6 +11,8 @@
 #include <string>
 #include <utility>
 
+#include <libtorrent/libtorrent.hpp>
+
 class CURL;
 
 namespace KODI
@@ -20,6 +22,8 @@ namespace NETWORK
 class CTorrentUtils
 {
 public:
+  static lt::info_hash_t GetCanonicalInfoHash(const lt::info_hash_t& infoHash);
+
   /*!
    * \brief Split a magnet URL, returning its original URI and the
    *        file/directory inside the torrent

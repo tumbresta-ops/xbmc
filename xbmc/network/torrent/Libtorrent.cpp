@@ -13,6 +13,7 @@
 #include "TempDiskIO.h"
 #include "Torrent.h"
 #include "TorrentPiece.h"
+#include "TorrentUtils.h"
 #include "URL.h"
 #include "filesystem/SpecialProtocol.h"
 #include "utils/StringUtils.h"
@@ -162,7 +163,7 @@ lt::torrent_handle CLibtorrent::AddTorrent(const std::string& magnetUri)
   }
   else
   {
-    const std::string metadataPath = m_cache->GetMetadataPath(addTorrentParams.info_hashes.v2);
+    const std::string metadataPath = m_cache->GetMetadataPath(addTorrentParams.info_hashes);
 
     // Try to read from cache
     lt::add_torrent_params cachedTorrentParams = lt::load_torrent_file(metadataPath, errorCode, {});
@@ -173,7 +174,7 @@ lt::torrent_handle CLibtorrent::AddTorrent(const std::string& magnetUri)
       addTorrentParams.ti.reset();
 
       // Dowload metadata
-      const lt::sha256_hash infoHash = addTorrentParams.info_hashes.v2;
+      const lt::info_hash_t infoHash = addTorrentParams.info_hashes;
 
       // Doesn't matter if it's duplicate since we never remove torrents
       lt::torrent_handle torrentHandle = AddTorrent(addTorrentParams, errorCode);
@@ -212,9 +213,9 @@ lt::torrent_handle CLibtorrent::AddTorrent(const std::string& magnetUri)
   return torrentHandle;
 }
 
-bool CLibtorrent::WaitForMetadata(const lt::sha256_hash& infoHash)
+bool CLibtorrent::WaitForMetadata(const lt::info_hash_t& infoHash)
 {
-  std::shared_ptr<CTorrent> torrent = GetTorrent(infoHash);
+  std::shared_ptr<CTorrent> torrent = GetTorrent(CTorrentUtils::GetCanonicalInfoHash(infoHash));
 
   if (torrent)
     return torrent->WaitForMetadata();
@@ -222,17 +223,19 @@ bool CLibtorrent::WaitForMetadata(const lt::sha256_hash& infoHash)
   return false;
 }
 
-bool CLibtorrent::WaitForPiece(const lt::sha256_hash& infoHash, int pieceIndex)
+bool CLibtorrent::WaitForPiece(const lt::info_hash_t& infoHash, int pieceIndex)
 {
   if (!m_session)
     return false;
 
+  const lt::info_hash_t canonicalInfoHash = CTorrentUtils::GetCanonicalInfoHash(infoHash);
+
   // Check m_session if piece is already available
-  lt::torrent_handle torrentHandle = m_session->find_torrent(lt::sha1_hash(infoHash));
+  lt::torrent_handle torrentHandle = m_session->find_torrent(canonicalInfoHash.get_best());
   if (torrentHandle.have_piece(static_cast<lt::piece_index_t>(pieceIndex)))
     return true;
 
-  const std::pair<lt::sha256_hash, int> key = std::make_pair(infoHash, pieceIndex);
+  const std::pair<lt::info_hash_t, int> key = std::make_pair(canonicalInfoHash, pieceIndex);
 
   std::shared_ptr<CTorrentPiece> torrentPiece;
 
@@ -241,7 +244,7 @@ bool CLibtorrent::WaitForPiece(const lt::sha256_hash& infoHash, int pieceIndex)
 
     auto it = m_waitingPieces.find(key);
     if (it == m_waitingPieces.end())
-      it = m_waitingPieces.emplace(key, std::make_shared<CTorrentPiece>(infoHash)).first;
+      it = m_waitingPieces.emplace(key, std::make_shared<CTorrentPiece>(canonicalInfoHash)).first;
 
     torrentPiece = it->second;
   }
@@ -266,7 +269,7 @@ ssize_t CLibtorrent::ReadPiece(const lt::torrent_handle& torrentHandle,
   if (pieceIndex < 0)
     return -1;
 
-  const lt::sha256_hash infoHash = torrentHandle.info_hashes().v2;
+  const lt::info_hash_t infoHash = CTorrentUtils::GetCanonicalInfoHash(torrentHandle.info_hashes());
 
   // Create torrent piece with the read buffer
   const std::shared_ptr<CTorrentPiece> torrentPiece = std::make_shared<CTorrentPiece>(infoHash);
@@ -277,7 +280,7 @@ ssize_t CLibtorrent::ReadPiece(const lt::torrent_handle& torrentHandle,
   {
     std::lock_guard<std::mutex> lock(m_readingMutex);
 
-    const std::pair<lt::sha256_hash, int> key = std::make_pair(infoHash, pieceIndex);
+    const std::pair<lt::info_hash_t, int> key = std::make_pair(infoHash, pieceIndex);
 
     auto it = m_readingPieces.find(key);
     if (it == m_readingPieces.end())
@@ -296,34 +299,35 @@ ssize_t CLibtorrent::ReadPiece(const lt::torrent_handle& torrentHandle,
   return torrentPiece->GetReadSize();
 }
 
-void CLibtorrent::OnTorrentError(const lt::sha256_hash& infoHash)
+void CLibtorrent::OnTorrentError(const lt::info_hash_t& infoHash)
 {
   OnMetadataFailed(infoHash);
 }
 
-void CLibtorrent::OnMetadataReceived(const lt::sha256_hash& infoHash)
+void CLibtorrent::OnMetadataReceived(const lt::info_hash_t& infoHash)
 {
   std::lock_guard<std::mutex> lock(m_torrentsMutex);
 
   // Notify the torrent
-  auto it = m_torrents.find(infoHash);
+  auto it = m_torrents.find(CTorrentUtils::GetCanonicalInfoHash(infoHash));
   if (it != m_torrents.end())
     it->second->SetMetadataReceived();
 }
 
-void CLibtorrent::OnMetadataFailed(const lt::sha256_hash& infoHash)
+void CLibtorrent::OnMetadataFailed(const lt::info_hash_t& infoHash)
 {
   std::lock_guard<std::mutex> lock(m_torrentsMutex);
 
   // Notify the torrent
-  auto it = m_torrents.find(infoHash);
+  auto it = m_torrents.find(CTorrentUtils::GetCanonicalInfoHash(infoHash));
   if (it != m_torrents.end())
     it->second->SetMetadataFailed();
 }
 
-void CLibtorrent::OnPieceFinished(const lt::sha256_hash& infoHash, int pieceIndex)
+void CLibtorrent::OnPieceFinished(const lt::info_hash_t& infoHash, int pieceIndex)
 {
-  const std::pair<lt::sha256_hash, int> key = std::make_pair(infoHash, pieceIndex);
+  const std::pair<lt::info_hash_t, int> key =
+      std::make_pair(CTorrentUtils::GetCanonicalInfoHash(infoHash), pieceIndex);
 
   std::lock_guard<std::mutex> lock(m_piecesMutex);
 
@@ -336,12 +340,13 @@ void CLibtorrent::OnPieceFinished(const lt::sha256_hash& infoHash, int pieceInde
   }
 }
 
-void CLibtorrent::OnReadPieceFinished(const lt::sha256_hash& infoHash,
+void CLibtorrent::OnReadPieceFinished(const lt::info_hash_t& infoHash,
                                       int pieceIndex,
                                       const uint8_t* pieceBuffer,
                                       size_t readSize)
 {
-  const std::pair<lt::sha256_hash, int> key = std::make_pair(infoHash, pieceIndex);
+  const std::pair<lt::info_hash_t, int> key =
+      std::make_pair(CTorrentUtils::GetCanonicalInfoHash(infoHash), pieceIndex);
 
   std::lock_guard<std::mutex> lock(m_readingMutex);
 
@@ -357,9 +362,10 @@ void CLibtorrent::OnReadPieceFinished(const lt::sha256_hash& infoHash,
   }
 }
 
-void CLibtorrent::OnReadPieceFailed(const lt::sha256_hash& infoHash, int pieceIndex)
+void CLibtorrent::OnReadPieceFailed(const lt::info_hash_t& infoHash, int pieceIndex)
 {
-  const std::pair<lt::sha256_hash, int> key = std::make_pair(infoHash, pieceIndex);
+  const std::pair<lt::info_hash_t, int> key =
+      std::make_pair(CTorrentUtils::GetCanonicalInfoHash(infoHash), pieceIndex);
 
   std::lock_guard<std::mutex> lock(m_readingMutex);
 
@@ -382,8 +388,9 @@ lt::torrent_handle CLibtorrent::AddTorrent(const lt::add_torrent_params& params,
     lt::torrent_handle torrentHandle = m_session->add_torrent(params, ec);
 
     std::lock_guard<std::mutex> lock(m_torrentsMutex);
-    if (m_torrents.find(params.info_hashes.v2) == m_torrents.end())
-      m_torrents.emplace(params.info_hashes.v2, std::make_shared<CTorrent>(torrentHandle));
+    const lt::info_hash_t infoHash = CTorrentUtils::GetCanonicalInfoHash(params.info_hashes);
+    if (m_torrents.find(infoHash) == m_torrents.end())
+      m_torrents.emplace(infoHash, std::make_shared<CTorrent>(torrentHandle));
 
     return torrentHandle;
   }
@@ -392,7 +399,7 @@ lt::torrent_handle CLibtorrent::AddTorrent(const lt::add_torrent_params& params,
   return {};
 }
 
-std::shared_ptr<CTorrent> CLibtorrent::GetTorrent(const lt::sha256_hash& infoHash)
+std::shared_ptr<CTorrent> CLibtorrent::GetTorrent(const lt::info_hash_t& infoHash)
 {
   std::lock_guard<std::mutex> lock(m_torrentsMutex);
 

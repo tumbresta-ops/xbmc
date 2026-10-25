@@ -27,7 +27,7 @@ public:
 
   const std::string& GetCachePath() const { return m_cachePath; }
 
-  std::string GetMetadataPath(const lt::sha256_hash& infoHash) const;
+  std::string GetMetadataPath(const lt::info_hash_t& infoHash) const;
 
   void SaveMetadata(const lt::add_torrent_params& addTorrentParams);
 

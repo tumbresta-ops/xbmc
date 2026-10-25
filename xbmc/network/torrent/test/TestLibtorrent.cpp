@@ -7,6 +7,8 @@
  */
 
 #include "network/torrent/Libtorrent.h"
+#include "network/torrent/LibtorrentCache.h"
+#include "network/torrent/TorrentUtils.h"
 
 #include <memory>
 
@@ -40,6 +42,30 @@ protected:
 TEST_F(TestLibtorrent, IsOnline)
 {
   ASSERT_TRUE(libtorrent->IsOnline());
+}
+
+TEST_F(TestLibtorrent, V1TorrentMetadataUsesDistinctCacheFiles)
+{
+  lt::add_torrent_params bigBuckBunny;
+  lt::add_torrent_params sintel;
+  lt::error_code errorCode;
+
+  lt::parse_magnet_uri(
+      "magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big%20Buck%20Bunny",
+      bigBuckBunny, errorCode);
+  ASSERT_FALSE(errorCode);
+
+  lt::parse_magnet_uri("magnet:?xt=urn:btih:08ada5a7a6183aae1e09d831df6748d566095a10&dn=Sintel",
+                       sintel, errorCode);
+  ASSERT_FALSE(errorCode);
+
+  CLibtorrentCache cache;
+  EXPECT_NE(cache.GetMetadataPath(bigBuckBunny.info_hashes),
+            cache.GetMetadataPath(sintel.info_hashes));
+
+  const lt::info_hash_t bigBuckBunnyV1(bigBuckBunny.info_hashes.v1);
+  EXPECT_EQ(CTorrentUtils::GetCanonicalInfoHash(bigBuckBunny.info_hashes),
+            CTorrentUtils::GetCanonicalInfoHash(bigBuckBunnyV1));
 }
 
 TEST_F(TestLibtorrent, DISABLED_AddTorrent)

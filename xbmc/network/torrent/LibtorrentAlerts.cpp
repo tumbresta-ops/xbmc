@@ -100,16 +100,15 @@ void CLibtorrentAlerts::Process()
           if (a->buffer)
           {
             // The read operation succeeded
-            m_alertHandler.OnReadPieceFinished(
-                a->handle.info_hashes().v2, static_cast<int>(a->piece),
-                reinterpret_cast<const uint8_t*>(a->buffer.get()), a->size);
+            m_alertHandler.OnReadPieceFinished(a->handle.info_hashes(), static_cast<int>(a->piece),
+                                               reinterpret_cast<const uint8_t*>(a->buffer.get()),
+                                               a->size);
           }
           else
           {
             // The read failed, the torrent is paused and an error state is set
             CLog::Log(LOGERROR, LOGLIBTORRENT, "Read failure: {}", a->message());
-            m_alertHandler.OnReadPieceFailed(a->handle.info_hashes().v2,
-                                             static_cast<int>(a->piece));
+            m_alertHandler.OnReadPieceFailed(a->handle.info_hashes(), static_cast<int>(a->piece));
           }
 
           break;
@@ -347,8 +346,7 @@ void CLibtorrentAlerts::Process()
           CLog::Log(LOGDEBUG, LOGLIBTORRENT, "Piece finished: {} (piece {})",
                     HashToString(a->handle.info_hashes().v2), static_cast<int>(a->piece_index));
 
-          m_alertHandler.OnPieceFinished(a->handle.info_hashes().v2,
-                                         static_cast<int>(a->piece_index));
+          m_alertHandler.OnPieceFinished(a->handle.info_hashes(), static_cast<int>(a->piece_index));
 
           break;
         }
@@ -530,7 +528,7 @@ void CLibtorrentAlerts::Process()
 
           CLog::Log(LOGERROR, LOGLIBTORRENT, "Metadata failed: {}", a->message());
 
-          m_alertHandler.OnMetadataFailed(a->handle.info_hashes().v2);
+          m_alertHandler.OnMetadataFailed(a->handle.info_hashes());
 
           break;
         }
@@ -543,7 +541,7 @@ void CLibtorrentAlerts::Process()
           CLog::Log(LOGDEBUG, LOGLIBTORRENT, "Metadata received: {}",
                     HashToString(a->handle.info_hashes().v2));
 
-          m_alertHandler.OnMetadataReceived(a->handle.info_hashes().v2);
+          m_alertHandler.OnMetadataReceived(a->handle.info_hashes());
 
           break;
         }
@@ -703,7 +701,7 @@ void CLibtorrentAlerts::Process()
 
           CLog::Log(LOGERROR, LOGLIBTORRENT, "Torrent error: {}", a->message());
 
-          m_alertHandler.OnTorrentError(a->handle.info_hashes().v2);
+          m_alertHandler.OnTorrentError(a->handle.info_hashes());
 
           break;
         }

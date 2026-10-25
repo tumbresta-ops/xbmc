@@ -8,6 +8,7 @@
 
 #include "LibtorrentCache.h"
 
+#include "TorrentUtils.h"
 #include "URL.h"
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
@@ -26,17 +27,17 @@ CLibtorrentCache::CLibtorrentCache()
   CreatePaths();
 }
 
-std::string CLibtorrentCache::GetMetadataPath(const lt::sha256_hash& infoHash) const
+std::string CLibtorrentCache::GetMetadataPath(const lt::info_hash_t& infoHash) const
 {
   std::stringstream str;
-  str << infoHash;
+  str << CTorrentUtils::GetCanonicalInfoHash(infoHash);
 
   return URIUtils::AddFileToFolder(m_cachePath, str.str() + ".torrent");
 }
 
 void CLibtorrentCache::SaveMetadata(const lt::add_torrent_params& addTorrentParams)
 {
-  const std::string torrentPath = GetMetadataPath(addTorrentParams.info_hashes.v2);
+  const std::string torrentPath = GetMetadataPath(addTorrentParams.info_hashes);
 
   // Encode metadata
   std::vector<char> buffer;

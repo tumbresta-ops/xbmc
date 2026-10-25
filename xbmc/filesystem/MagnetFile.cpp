@@ -163,7 +163,7 @@ ssize_t CMagnetFile::Read(void* lpBuf, size_t uiBufSize)
 
   if (!m_torrentHandle.have_piece(part.piece))
   {
-    if (!libtorrent->WaitForPiece(torrentInfo->info_hashes().v2, static_cast<int>(part.piece)))
+    if (!libtorrent->WaitForPiece(torrentInfo->info_hashes(), static_cast<int>(part.piece)))
       return -1;
   }
 

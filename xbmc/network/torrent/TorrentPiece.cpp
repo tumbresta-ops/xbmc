@@ -13,7 +13,7 @@
 using namespace KODI;
 using namespace NETWORK;
 
-CTorrentPiece::CTorrentPiece(const lt::sha256_hash& infoHash) : m_infoHash(infoHash)
+CTorrentPiece::CTorrentPiece(const lt::info_hash_t& infoHash) : m_infoHash(infoHash)
 {
 }
 

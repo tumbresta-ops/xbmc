@@ -14,6 +14,14 @@
 using namespace KODI;
 using namespace NETWORK;
 
+lt::info_hash_t CTorrentUtils::GetCanonicalInfoHash(const lt::info_hash_t& infoHash)
+{
+  if (infoHash.has_v1())
+    return lt::info_hash_t(infoHash.v1);
+
+  return lt::info_hash_t(infoHash.v2);
+}
+
 std::pair<std::string, std::string> CTorrentUtils::SplitMagnetURL(const CURL& url)
 {
   std::string filename = url.GetFileName();

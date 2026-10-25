@@ -50,8 +50,8 @@ public:
 
   // Libtorrent API
   lt::torrent_handle AddTorrent(const std::string& magnetUri);
-  bool WaitForMetadata(const lt::sha256_hash& infoHash);
-  bool WaitForPiece(const lt::sha256_hash& infoHash, int pieceIndex);
+  bool WaitForMetadata(const lt::info_hash_t& infoHash);
+  bool WaitForPiece(const lt::info_hash_t& infoHash, int pieceIndex);
   ssize_t ReadPiece(const lt::torrent_handle& torrentHandle,
                     int pieceIndex,
                     size_t partStart,
@@ -60,20 +60,20 @@ public:
                     size_t bufferSize);
 
   // Implementation of ILibtorrentAlertHandler
-  void OnTorrentError(const lt::sha256_hash& infoHash) override;
-  void OnMetadataReceived(const lt::sha256_hash& infoHash) override;
-  void OnMetadataFailed(const lt::sha256_hash& infoHash) override;
-  void OnPieceFinished(const lt::sha256_hash& infoHash, int pieceIndex) override;
-  void OnReadPieceFinished(const lt::sha256_hash& infoHash,
+  void OnTorrentError(const lt::info_hash_t& infoHash) override;
+  void OnMetadataReceived(const lt::info_hash_t& infoHash) override;
+  void OnMetadataFailed(const lt::info_hash_t& infoHash) override;
+  void OnPieceFinished(const lt::info_hash_t& infoHash, int pieceIndex) override;
+  void OnReadPieceFinished(const lt::info_hash_t& infoHash,
                            int pieceIndex,
                            const uint8_t* pieceBuffer,
                            size_t readSize) override;
-  void OnReadPieceFailed(const lt::sha256_hash& infoHash, int pieceIndex) override;
+  void OnReadPieceFailed(const lt::info_hash_t& infoHash, int pieceIndex) override;
 
 private:
   // Private utility functions
   lt::torrent_handle AddTorrent(const lt::add_torrent_params& params, lt::error_code& ec);
-  std::shared_ptr<CTorrent> GetTorrent(const lt::sha256_hash& infoHash);
+  std::shared_ptr<CTorrent> GetTorrent(const lt::info_hash_t& infoHash);
 
   // libtorrent parameters
   std::shared_ptr<lt::session> m_session;
@@ -83,15 +83,15 @@ private:
   std::unique_ptr<CLibtorrentCache> m_cache;
 
   // Torrent parameters
-  std::map<lt::sha256_hash, std::shared_ptr<CTorrent>> m_torrents;
+  std::map<lt::info_hash_t, std::shared_ptr<CTorrent>> m_torrents;
   std::mutex m_torrentsMutex;
 
   // Piece parameters
-  std::map<std::pair<lt::sha256_hash, int>, std::shared_ptr<CTorrentPiece>> m_waitingPieces;
+  std::map<std::pair<lt::info_hash_t, int>, std::shared_ptr<CTorrentPiece>> m_waitingPieces;
   std::mutex m_piecesMutex;
 
   // Read piece parameters
-  std::map<std::pair<lt::sha256_hash, int>, std::vector<std::shared_ptr<CTorrentPiece>>>
+  std::map<std::pair<lt::info_hash_t, int>, std::vector<std::shared_ptr<CTorrentPiece>>>
       m_readingPieces;
   std::mutex m_readingMutex;
 };

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon id="plugin.video.kademlia"
-       name="Kademlia Magnet Player"
-       version="1.0.0"
+       name="Kademlia Magnet Browser"
+       version="1.0.6"
        provider-name="tumbresta-ops">
   <requires>
     <import addon="xbmc.python" version="3.0.0"/>
@@ -10,8 +10,8 @@
     <provides>video</provides>
   </extension>
   <extension point="xbmc.addon.metadata">
-    <summary lang="en_GB">Play a test video from a Kademlia magnet link</summary>
-    <description lang="en_GB">Provides a Big Buck Bunny magnet playback test for Kodi builds with Kademlia support.</description>
+    <summary lang="en_GB">Browse and play files from Kademlia magnet links</summary>
+    <description lang="en_GB">Browses torrent files through Kodi's magnet VFS and plays the selected video file.</description>
     <platform>all</platform>
     <license>GPL-2.0-or-later</license>
   </extension>
