@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<addon id="plugin.video.kademlia"
+       name="Kademlia Magnet Player"
+       version="1.0.0"
+       provider-name="tumbresta-ops">
+  <requires>
+    <import addon="xbmc.python" version="3.0.0"/>
+  </requires>
+  <extension point="xbmc.python.pluginsource" library="default.py">
+    <provides>video</provides>
+  </extension>
+  <extension point="xbmc.addon.metadata">
+    <summary lang="en_GB">Play a test video from a Kademlia magnet link</summary>
+    <description lang="en_GB">Provides a Big Buck Bunny magnet playback test for Kodi builds with Kademlia support.</description>
+    <platform>all</platform>
+    <license>GPL-2.0-or-later</license>
+  </extension>
+</addon>
