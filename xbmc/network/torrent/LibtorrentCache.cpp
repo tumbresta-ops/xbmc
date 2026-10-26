@@ -85,7 +85,8 @@ void CLibtorrentCache::PruneMetadata()
   constexpr size_t MAX_METADATA_FILES = 50;
 
   CFileItemList items;
-  if (!XFILE::CDirectory::GetDirectory(m_cachePath, items, ".torrent"))
+  if (!XFILE::CDirectory::GetDirectory(m_cachePath, items, ".torrent",
+                                       XFILE::DIR_FLAG_NO_FILE_DIRS))
   {
     CLog::Log(LOGERROR, "Failed to list Kademlia metadata cache");
     return;
