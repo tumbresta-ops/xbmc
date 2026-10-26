@@ -13,7 +13,7 @@
 #include "filesystem/Directory.h"
 #include "filesystem/File.h"
 #include "FileItem.h"
-#include "filesystem/FileItemList.h"
+#include "FileItemList.h"
 #include "filesystem/SpecialProtocol.h"
 #include "utils/StringUtils.h"
 #include "utils/URIUtils.h"
