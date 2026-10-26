@@ -26,7 +26,7 @@ class CMagnetFile : public IFile
 {
 public:
   CMagnetFile() = default;
-  ~CMagnetFile() override = default;
+  ~CMagnetFile() override;
 
   // Implementation of IFile
   bool Open(const CURL& url) override;
@@ -37,7 +37,7 @@ public:
   int64_t GetPosition() override;
   int64_t GetLength() override;
   int64_t Seek(int64_t iFilePosition, int iWhence = SEEK_SET) override;
-  void Close() override {}
+  void Close() override;
 
 private:
   // Private utility functions
@@ -46,6 +46,7 @@ private:
 
   // libtorrent parameters
   lt::torrent_handle m_torrentHandle;
+  bool m_torrentAcquired{false};
 
   // File parameters
   int m_fileIndex{-1};

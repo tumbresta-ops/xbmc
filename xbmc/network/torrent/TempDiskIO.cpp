@@ -165,19 +165,14 @@ void CTempDiskIO::async_set_file_priority(
                        lt::aux::vector<lt::download_priority_t, lt::file_index_t>)> handler)
 
 {
-  post(m_ioc,
-       [=]
-       {
-         handler(lt::storage_error(lt::error_code(boost::system::errc::operation_not_supported,
-                                                  lt::system_category())),
-                 prio);
-       });
+  post(m_ioc, [=] { handler(lt::storage_error(), prio); });
 }
 
-void CTempDiskIO::async_clear_piece(lt::storage_index_t,
+void CTempDiskIO::async_clear_piece(lt::storage_index_t storage,
                                     lt::piece_index_t index,
                                     std::function<void(lt::piece_index_t)> handler)
 {
+  m_torrents[storage]->ClearPiece(index);
   post(m_ioc, [=] { handler(index); });
 }
 

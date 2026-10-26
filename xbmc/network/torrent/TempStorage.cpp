@@ -67,6 +67,11 @@ void CTempStorage::Write(const lt::span<const char> b,
   std::memcpy(data.data() + offset, b.data(), std::size_t(b.size()));
 }
 
+void CTempStorage::ClearPiece(lt::piece_index_t piece)
+{
+  m_fileData.erase(piece);
+}
+
 lt::sha256_hash CTempStorage::Hash(const lt::piece_index_t piece,
                                    const lt::span<lt::sha256_hash> blockHashes,
                                    lt::storage_error& ec) const

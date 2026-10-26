@@ -14,20 +14,26 @@ Sintel          https://durian.blender.org/
 Tears of Steel  https://mango.blender.org/
 ```
 
-Kademlia DHT must be enabled in Kodi's Services settings. The plugin URL
-creates a catalog of folder items whose targets are `magnet://?xt=...`;
-selecting one enters Kodi's native torrent browser. Video files inside the
-torrent are then opened directly by Kodi from their
-`magnet://<torrent path>?xt=...` URLs.
+Kademlia DHT must be enabled in Kodi's Services settings. Each catalog item
+points directly to a `magnet://?xt=...` folder. Selecting a movie opens the
+torrent contents immediately, without an extra plugin or folder-selection
+step. Select a video file inside that folder to play it; Kodi opens it directly
+from its `magnet://<torrent path>?xt=...` URL.
 
 These public sample magnets use BitTorrent v1 info hashes. Kodi must be built
 with the Kademlia v1/v2 hash-key fix; older builds that key all torrents by
 the v2 hash can mistakenly reuse Big Buck Bunny metadata for other v1 torrents.
 
-A specific magnet can still be opened directly with a plugin URL, for example:
+Kodi's Kademlia storage keeps torrent metadata on disk, capped at 50 `.torrent`
+files, and uses temporary memory storage for streamed pieces. Stream data is
+released when the file closes; while playback is active, memory use grows with
+the pieces downloaded for the selected video.
+
+A specific magnet can also be passed to the add-on through a `magnet` query
+parameter, for example:
 
 ```text
-plugin://plugin.video.kademlia/magnet:?xt=urn:btih:dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c&dn=Big%20Buck%20Bunny
+plugin://plugin.video.kademlia/?magnet=magnet%3A%3Fxt%3Durn%3Abtih%3Add8255ecdc7ca55fb0bbf81323d87062db1f6d1c%26dn%3DBig%2520Buck%2520Bunny
 ```
 
 JSON-RPC callers can also pass the magnet in the `action` parameter:

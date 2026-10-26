@@ -57,8 +57,7 @@ void CLibtorrent::Start()
 
   //! @todo Load DHT session state
 
-  //! @todo Implement custom persistent disk IO
-  //sessionParams.disk_io_constructor = CTempDiskIO::CreateTempDisk;
+  sessionParams.disk_io_constructor = CTempDiskIO::CreateTempDisk;
 
   lt::settings_pack& settings = sessionParams.settings;
 
@@ -104,8 +103,11 @@ void CLibtorrent::Stop(bool bWait)
   StopThread(false);
 
   // Stop torrent events
-  for (const auto& torrent : m_torrents)
-    torrent.second->Cancel();
+  {
+    std::lock_guard<std::mutex> lock(m_torrentsMutex);
+    for (const auto& torrent : m_torrents)
+      torrent.second->Cancel();
+  }
 
   // Stop resources
   m_alerts->Abort();
@@ -117,7 +119,11 @@ void CLibtorrent::Stop(bool bWait)
   StopThread(true);
 
   // Clear torrents
-  m_torrents.clear();
+  {
+    std::lock_guard<std::mutex> lock(m_torrentsMutex);
+    m_torrents.clear();
+    m_activeStreamCounts.clear();
+  }
 
   // Clear resources
   m_alerts->Deinitialize();
@@ -299,6 +305,79 @@ ssize_t CLibtorrent::ReadPiece(const lt::torrent_handle& torrentHandle,
   return torrentPiece->GetReadSize();
 }
 
+void CLibtorrent::AcquireTorrent(const lt::torrent_handle& torrentHandle)
+{
+  if (!torrentHandle.is_valid())
+    return;
+
+  const lt::info_hash_t infoHash = CTorrentUtils::GetCanonicalInfoHash(torrentHandle.info_hashes());
+  std::lock_guard<std::mutex> lock(m_torrentsMutex);
+  ++m_activeStreamCounts[infoHash];
+}
+
+void CLibtorrent::ReleaseTorrent(const lt::torrent_handle& torrentHandle)
+{
+  if (!torrentHandle.is_valid())
+    return;
+
+  const lt::info_hash_t infoHash = CTorrentUtils::GetCanonicalInfoHash(torrentHandle.info_hashes());
+  bool removeTorrent = false;
+  {
+    std::lock_guard<std::mutex> lock(m_torrentsMutex);
+    auto it = m_activeStreamCounts.find(infoHash);
+    if (it == m_activeStreamCounts.end())
+      return;
+
+    if (--it->second == 0)
+    {
+      m_activeStreamCounts.erase(it);
+      auto torrent = m_torrents.find(infoHash);
+      if (torrent != m_torrents.end())
+      {
+        torrent->second->Cancel();
+        m_torrents.erase(torrent);
+      }
+      if (m_session)
+      {
+        m_session->remove_torrent(torrentHandle);
+        removeTorrent = true;
+      }
+    }
+  }
+
+  if (!removeTorrent)
+    return;
+
+  {
+    std::lock_guard<std::mutex> lock(m_piecesMutex);
+    for (auto it = m_waitingPieces.begin(); it != m_waitingPieces.end();)
+    {
+      if (it->first.first == infoHash)
+      {
+        it->second->Cancel();
+        it = m_waitingPieces.erase(it);
+      }
+      else
+        ++it;
+    }
+  }
+
+  {
+    std::lock_guard<std::mutex> lock(m_readingMutex);
+    for (auto it = m_readingPieces.begin(); it != m_readingPieces.end();)
+    {
+      if (it->first.first == infoHash)
+      {
+        for (const auto& piece : it->second)
+          piece->Cancel();
+        it = m_readingPieces.erase(it);
+      }
+      else
+        ++it;
+    }
+  }
+}
+
 void CLibtorrent::OnTorrentError(const lt::info_hash_t& infoHash)
 {
   OnMetadataFailed(infoHash);
@@ -383,11 +462,11 @@ void CLibtorrent::OnReadPieceFailed(const lt::info_hash_t& infoHash, int pieceIn
 
 lt::torrent_handle CLibtorrent::AddTorrent(const lt::add_torrent_params& params, lt::error_code& ec)
 {
+  std::lock_guard<std::mutex> lock(m_torrentsMutex);
   if (m_session)
   {
     lt::torrent_handle torrentHandle = m_session->add_torrent(params, ec);
 
-    std::lock_guard<std::mutex> lock(m_torrentsMutex);
     const lt::info_hash_t infoHash = CTorrentUtils::GetCanonicalInfoHash(params.info_hashes);
     if (m_torrents.find(infoHash) == m_torrents.end())
       m_torrents.emplace(infoHash, std::make_shared<CTorrent>(torrentHandle));

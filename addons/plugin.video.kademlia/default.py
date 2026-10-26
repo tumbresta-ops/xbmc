@@ -1,5 +1,5 @@
 import sys
-from urllib.parse import parse_qs, parse_qsl, quote, urlencode, urlsplit
+from urllib.parse import parse_qs, parse_qsl, quote, urlsplit
 
 import xbmcgui
 import xbmcplugin
@@ -25,64 +25,64 @@ TEST_TORRENTS = (
 
 def parse_plugin_params():
     query = sys.argv[2].lstrip("?") if len(sys.argv) > 2 else ""
-    return parse_qs(query), query
+    return parse_qs(query, keep_blank_values=True), query
 
 
 def get_magnet(params, raw_query):
-    if params.get("magnet"):
-        return params["magnet"][0]
+    magnet_values = params.get("magnet", [])
+    if magnet_values and magnet_values[0]:
+        return validate_magnet(magnet_values[0])
 
     action = params.get("action", [""])[0]
-    if action.startswith("magnet:"):
-        magnet_uri = action[len("magnet:") :]
+    if action.lower().startswith("magnet:"):
+        if action.lower().startswith("magnet:magnet:?"):
+            magnet_uri = action[len("magnet:") :]
+        elif action.lower().startswith("magnet:?"):
+            magnet_uri = action
+        else:
+            magnet_uri = f"magnet:?{action[len('magnet:'):]}"
+
         magnet_params = [
             (key, value)
             for key, value in parse_qsl(raw_query, keep_blank_values=True)
             if key not in ("action", "path", "magnet")
         ]
-        if magnet_uri.startswith("magnet:?"):
+        if magnet_uri.lower().startswith("magnet:?"):
             existing_params = parse_qsl(urlsplit(magnet_uri).query, keep_blank_values=True)
-            remaining_params = list(magnet_params)
-            for param in existing_params:
-                if param in remaining_params:
-                    remaining_params.remove(param)
-            if remaining_params:
-                magnet_uri += f"&{urlencode(remaining_params)}"
-            return magnet_uri
-        if magnet_uri.startswith("magnet:"):
-            magnet_uri += "?"
-        elif magnet_uri.startswith("?"):
-            magnet_uri = f"magnet:{magnet_uri}"
-        elif magnet_params:
-            magnet_uri = "magnet:?"
-        else:
-            raise ValueError("The action parameter must contain a magnet URI.")
+            for param in magnet_params:
+                if param not in existing_params:
+                    existing_params.append(param)
+            magnet_uri = f"magnet:?{urlencode(existing_params)}"
 
-        if magnet_params:
-            magnet_uri += urlencode(magnet_params)
-        return magnet_uri
+        return validate_magnet(magnet_uri)
 
     plugin_url = urlsplit(PLUGIN_URL)
-    if plugin_url.path.rstrip("/").endswith("/magnet:"):
+    if plugin_url.path.rstrip("/").lower().endswith("/magnet:"):
         query = plugin_url.query or raw_query
-        if query.startswith("magnet:"):
-            return query
-        return f"magnet:?{query.lstrip('?')}"
+        if query.lower().startswith("magnet:"):
+            return validate_magnet(query)
+        return validate_magnet(f"magnet:?{query.lstrip('?')}")
 
     raise ValueError("No magnet URI was provided.")
 
 
-def get_magnet_query(magnet_uri):
+def validate_magnet(magnet_uri):
+    magnet_uri = magnet_uri.strip()
     parsed = urlsplit(magnet_uri)
-    if parsed.scheme != "magnet" or not parsed.query:
+    if parsed.scheme.lower() != "magnet" or not parsed.query:
         raise ValueError("The supplied URL is not a valid magnet URI.")
-    return parsed.query
+    params = parse_qs(parsed.query, keep_blank_values=True)
+    if not any(params.get("xt", [])):
+        raise ValueError("Magnet URI is missing the xt parameter.")
+    return magnet_uri
 
 
 def add_torrent_folder(magnet_uri):
-    query = get_magnet_query(magnet_uri)
-    torrent_url = f"magnet://?{query}"
-    name = parse_qs(query).get("dn", ["Open torrent"])[0]
+    magnet_uri = validate_magnet(magnet_uri)
+    query = urlsplit(magnet_uri).query
+    params = parse_qs(query, keep_blank_values=True)
+    name = params.get("dn", ["Open torrent"])[0] or "Open torrent"
+    torrent_url = f"magnet://{magnet_uri[len('magnet:'):]}"
 
     item = xbmcgui.ListItem(label=name)
     item.setInfo("video", {"title": name, "mediatype": "video"})
@@ -98,11 +98,12 @@ def add_torrent_folder(magnet_uri):
 def show_test_torrents():
     for name, info_hash in TEST_TORRENTS:
         magnet_query = f"xt=urn:btih:{info_hash}&dn={quote(name)}"
+        torrent_url = f"magnet://?{magnet_query}"
         item = xbmcgui.ListItem(label=name)
         item.setInfo("video", {"title": name, "mediatype": "video"})
         xbmcplugin.addDirectoryItem(
             PLUGIN_HANDLE,
-            f"magnet://?{magnet_query}",
+            torrent_url,
             item,
             isFolder=True,
         )
@@ -111,7 +112,7 @@ def show_test_torrents():
 
 params, raw_query = parse_plugin_params()
 plugin_path = urlsplit(PLUGIN_URL).path.rstrip("/")
-has_magnet_action = params.get("action", [""])[0].startswith("magnet:")
+has_magnet_action = params.get("action", [""])[0].lower().startswith("magnet:")
 if (
     plugin_path in ("", "/")
     and not params.get("magnet")

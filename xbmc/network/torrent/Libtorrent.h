@@ -50,6 +50,8 @@ public:
 
   // Libtorrent API
   lt::torrent_handle AddTorrent(const std::string& magnetUri);
+  void AcquireTorrent(const lt::torrent_handle& torrentHandle);
+  void ReleaseTorrent(const lt::torrent_handle& torrentHandle);
   bool WaitForMetadata(const lt::info_hash_t& infoHash);
   bool WaitForPiece(const lt::info_hash_t& infoHash, int pieceIndex);
   ssize_t ReadPiece(const lt::torrent_handle& torrentHandle,
@@ -84,6 +86,7 @@ private:
 
   // Torrent parameters
   std::map<lt::info_hash_t, std::shared_ptr<CTorrent>> m_torrents;
+  std::map<lt::info_hash_t, size_t> m_activeStreamCounts;
   std::mutex m_torrentsMutex;
 
   // Piece parameters

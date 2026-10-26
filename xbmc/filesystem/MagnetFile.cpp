@@ -19,6 +19,8 @@
 #include "utils/URIUtils.h"
 #include "utils/log.h"
 
+#include <vector>
+
 #include <libtorrent/libtorrent.hpp>
 
 using namespace KODI;
@@ -31,6 +33,25 @@ constexpr uint8_t PRIO_HIGHEST = 7;
 constexpr uint8_t PRIO_HIGHER = 6;
 constexpr uint8_t PRIO_HIGH = 5;
 } // namespace
+
+CMagnetFile::~CMagnetFile()
+{
+  Close();
+}
+
+void CMagnetFile::Close()
+{
+  if (!m_torrentAcquired)
+    return;
+
+  CNetworkServices& networkServices = CServiceBroker::GetNetwork().GetServices();
+  CLibtorrent* libtorrent = dynamic_cast<CLibtorrent*>(networkServices.GetLibtorrent());
+  if (libtorrent)
+    libtorrent->ReleaseTorrent(m_torrentHandle);
+
+  m_torrentAcquired = false;
+  m_torrentHandle = {};
+}
 
 bool CMagnetFile::Open(const CURL& url)
 {
@@ -71,6 +92,13 @@ bool CMagnetFile::Open(const CURL& url)
 
   if (m_fileIndex == -1)
     return false;
+
+  std::vector<lt::download_priority_t> filePriorities(files.num_files(),
+                                                      static_cast<lt::download_priority_t>(0));
+  filePriorities[m_fileIndex] = static_cast<lt::download_priority_t>(1);
+  m_torrentHandle.prioritize_files(filePriorities);
+  libtorrent->AcquireTorrent(m_torrentHandle);
+  m_torrentAcquired = true;
 
   // Set second highest priority to the first and last 0.1% or 128 KiB,
   // whichever is greater
@@ -248,7 +276,7 @@ void CMagnetFile::SetPiecePriority(int fileIndex,
     if (m_torrentHandle.have_piece(part.piece))
       continue;
 
-    if (static_cast<uint8_t>(m_torrentHandle.piece_priority(part.piece)) < priority)
+    if (static_cast<uint8_t>(m_torrentHandle.piece_priority(part.piece)) >= priority)
       continue;
 
     m_torrentHandle.piece_priority(part.piece, static_cast<lt::download_priority_t>(priority));

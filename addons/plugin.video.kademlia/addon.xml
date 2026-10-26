@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <addon id="plugin.video.kademlia"
-       name="Kademlia Magnet Browser"
-       version="1.0.6"
-       provider-name="tumbresta-ops">
+       name="Kademlia"
+       version="1.1.1"
+       provider-name="openkampus">
   <requires>
-    <import addon="xbmc.python" version="3.0.0"/>
+    <import addon="xbmc.python" version="3.0.1"/>
   </requires>
   <extension point="xbmc.python.pluginsource" library="default.py">
     <provides>video</provides>

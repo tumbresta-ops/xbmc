@@ -30,8 +30,9 @@ namespace
 
 std::string getKey(const CURL& url)
 {
-  // Get rid of any URL options, else the compare may be wrong
-  std::string path = url.GetWithoutOptions();
+  // Magnet query parameters identify the torrent and must remain part of the
+  // cache key. Other directory URLs intentionally ignore their options.
+  std::string path = url.IsProtocol("magnet") ? url.Get() : url.GetWithoutOptions();
   URIUtils::RemoveSlashAtEnd(path);
   return path;
 }

@@ -30,6 +30,7 @@ public:
   lt::span<const char> Read(const lt::peer_request r, lt::storage_error& ec) const;
 
   void Write(const lt::span<const char> b, const lt::piece_index_t piece, const int offset);
+  void ClearPiece(lt::piece_index_t piece);
 
   lt::sha256_hash Hash(const lt::piece_index_t piece,
                        const lt::span<lt::sha256_hash> blockHashes,

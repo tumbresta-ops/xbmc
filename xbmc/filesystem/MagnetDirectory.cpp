@@ -20,6 +20,7 @@
 #include "utils/log.h"
 
 #include <cstring>
+#include <vector>
 
 #include <libtorrent/libtorrent.hpp>
 
@@ -53,6 +54,9 @@ bool CMagnetDirectory::GetDirectory(const CURL& urlOrig, CFileItemList& items)
     CLog::Log(LOGERROR, "Torrent has no files!");
     return false;
   }
+
+  torrentHandle.prioritize_files(std::vector<lt::download_priority_t>(
+      files.num_files(), static_cast<lt::download_priority_t>(0)));
 
   // Split subdirectory into parts
   std::vector<std::string> subdirectoryParts = URIUtils::SplitPath(subdirectory);

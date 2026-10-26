@@ -148,6 +148,23 @@ TEST_F(TestDirectoryCache, URLWithOptions)
   EXPECT_EQ(1, GetCacheDirectory(*cache, "ftp://test/directory/?different=option", true)->Size());
 }
 
+TEST_F(TestDirectoryCache, MagnetURLsWithDifferentInfoHashesHaveSeparateEntries)
+{
+  const std::string magnetA = "magnet://?xt=urn:btih:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  const std::string magnetB = "magnet://?xt=urn:btih:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+  CFileItemList itemsA;
+  itemsA.Add(std::make_shared<CFileItem>("Torrent A"));
+  CFileItemList itemsB;
+  itemsB.Add(std::make_shared<CFileItem>("Torrent B"));
+
+  cache->SetDirectory(CURL(magnetA), itemsA, CacheType::ALWAYS);
+  cache->SetDirectory(CURL(magnetB), itemsB, CacheType::ALWAYS);
+
+  EXPECT_EQ("Torrent A", GetCacheDirectory(*cache, magnetA, true)->Get(0)->GetLabel());
+  EXPECT_EQ("Torrent B", GetCacheDirectory(*cache, magnetB, true)->Get(0)->GetLabel());
+}
+
 // Clear operations tests
 TEST_F(TestDirectoryCache, ClearDirectory)
 {

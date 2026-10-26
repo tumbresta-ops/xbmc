@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <mutex>
 #include <string>
 
 #include <libtorrent/libtorrent.hpp>
@@ -33,8 +34,11 @@ public:
 
 private:
   void CreatePaths();
+  void RemovePersistedPayload();
+  void PruneMetadata();
 
   const std::string m_cachePath;
+  std::mutex m_cacheMutex;
 };
 } // namespace NETWORK
 } // namespace KODI
